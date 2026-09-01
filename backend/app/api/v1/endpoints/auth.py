@@ -5,6 +5,7 @@ from sqlalchemy import select, or_
 
 from app.db.session import get_db
 from app.models.user import User
+from app.schemas.response import APIResponse
 from app.schemas.user import UserCreate, UserResponse
 from app.schemas.token import Token
 from app.core.security import hash_password, verify_password_hash, create_access_token
@@ -13,7 +14,7 @@ auth_router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
 
 @auth_router.post(
-    "/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED
+    "/register", response_model=APIResponse[UserResponse], status_code=status.HTTP_201_CREATED
 )
 async def register_user(user_data: UserCreate, db: AsyncSession = Depends(get_db)):
     query = select(User).where(
@@ -43,7 +44,11 @@ async def register_user(user_data: UserCreate, db: AsyncSession = Depends(get_db
     await db.commit()
     await db.refresh(new_user)
 
-    return new_user
+    return APIResponse(
+        code=201,
+        message="User registered successfully",
+        data=new_user
+    )
 
 
 @auth_router.post("/login", response_model=Token, status_code=status.HTTP_200_OK)
