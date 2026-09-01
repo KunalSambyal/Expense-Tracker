@@ -49,10 +49,3 @@ class UserResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
-
-
-class UserLogin(BaseModel):
-    username: str = Field(..., description="Username of the user")
-    password: SecretStr = Field(..., description="Password of the user")
-
-    model_config = {"from_attributes": True}
