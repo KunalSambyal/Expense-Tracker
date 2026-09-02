@@ -10,6 +10,8 @@ from app.models.expense import Expense
 
 from app.api.v1.endpoints.auth import auth_router
 from app.api.v1.endpoints.users import users_router
+from app.api.v1.endpoints.categories import category_router
+from app.api.v1.endpoints.expenses import expenses_router
 
 
 @asynccontextmanager
@@ -23,3 +25,5 @@ app = FastAPI(title="Expense Tracker API", lifespan=lifespan)
 
 app.include_router(auth_router)
 app.include_router(users_router)
+app.include_router(category_router)
+app.include_router(expenses_router)
