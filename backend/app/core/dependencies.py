@@ -7,6 +7,7 @@ from jose import JWTError
 from app.db.session import get_db
 from app.core.security import verify_access_token
 from app.models.user import User
+from app.services.user_service import UserService
 
 oauth2_bearer = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
@@ -23,8 +24,7 @@ async def get_current_user(token: str = Depends(oauth2_bearer), db: AsyncSession
     except JWTError:
         raise credentials_exception
 
-    query = select(User).where(User.username == username)
-    user = (await db.execute(query)).scalar_one_or_none()
+    user = await UserService.get_by_username(db, username)
 
     if user is None:
         raise credentials_exception
