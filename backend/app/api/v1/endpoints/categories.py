@@ -1,20 +1,19 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select, and_
+from uuid import UUID
 
 from app.db.session import get_db, AsyncSession
 from app.models.user import User
-from app.models.category import Category
 from app.schemas.category import CategoryCreate, CategoryResponse
 from app.schemas.response import APIResponse
 from app.core.dependencies import get_current_user
+from app.services.category_service import CategoryService
 
 category_router = APIRouter(prefix="/api/v1/categories", tags=["categories"])
 
 
 @category_router.post("", response_model=APIResponse[CategoryResponse], status_code=status.HTTP_201_CREATED)
 async def add_category(category_data: CategoryCreate, db: AsyncSession=Depends(get_db), current_user: User=Depends(get_current_user)):
-    query = select(Category).where(Category.name == category_data.name, Category.user_id == current_user.id)
-    existing_category = (await db.execute(query)).scalar_one_or_none()
+    existing_category = await CategoryService.get_by_name(db, category_data.name, current_user.id)
 
     if existing_category:
         raise HTTPException(
@@ -22,13 +21,7 @@ async def add_category(category_data: CategoryCreate, db: AsyncSession=Depends(g
             detail=f"Category '{category_data.name}' already exists."
         )
 
-    new_category = Category(
-        name=category_data.name,
-        user_id=current_user.id
-    )
-    db.add(new_category)
-    await db.commit()
-    await db.refresh(new_category)
+    new_category = await CategoryService.create(db, category_data, current_user.id)
 
     return APIResponse(
         code=201,
@@ -38,8 +31,7 @@ async def add_category(category_data: CategoryCreate, db: AsyncSession=Depends(g
 
 @category_router.get("", response_model=APIResponse[list[CategoryResponse]], status_code=status.HTTP_200_OK)
 async def get_categories(db: AsyncSession=Depends(get_db), current_user: User=Depends(get_current_user)):
-    query = select(Category).where(Category.user_id == current_user.id)
-    categories = (await db.execute(query)).scalars().all()
+    categories = await CategoryService.get_all_by_user(db, current_user.id)
 
     return APIResponse(
         message="Categories retrieved successfully",
@@ -48,12 +40,8 @@ async def get_categories(db: AsyncSession=Depends(get_db), current_user: User=De
 
 
 @category_router.delete("/{category_id}", response_model=APIResponse[CategoryResponse], status_code=status.HTTP_200_OK)
-async def delete_category(category_id, db: AsyncSession=Depends(get_db), current_user: User=Depends(get_current_user)):
-    query = select(Category).where(and_(
-        Category.user_id == current_user.id,
-        Category.id == category_id
-    ))
-    category = (await db.execute(query)).scalar_one_or_none()
+async def delete_category(category_id: UUID, db: AsyncSession=Depends(get_db), current_user: User=Depends(get_current_user)):
+    category = await CategoryService.get_by_id(db, category_id, current_user.id)
 
     if not category:
         raise HTTPException(
@@ -61,10 +49,9 @@ async def delete_category(category_id, db: AsyncSession=Depends(get_db), current
             detail="Category not found."
         )
 
-    await db.delete(category)
-    await db.commit()
+    await CategoryService.delete(db, category)
     
     return APIResponse(
-        message="Category deleted successfullfy",
+        message="Category deleted successfully",
         data=category
     )
