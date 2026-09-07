@@ -1,14 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 import uuid
 from datetime import date
 
 from app.db.session import get_db, AsyncSession
 from app.models.user import User
-from app.schemas.expense import ExpenseCreate, ExpenseResponse, ExpenseUpdate
+from app.schemas.expense import ExpenseCreate, ExpenseResponse, ExpenseUpdate, ExpenseSummaryResponse
 from app.schemas.response import APIResponse
 from app.core.dependencies import get_current_user
 from app.services.expense_service import ExpenseService
 from app.services.category_service import CategoryService
+from app.services.ai_service import AIService
 
 expenses_router = APIRouter(prefix="/api/v1/expenses", tags=["expenses"])
 
@@ -35,6 +36,23 @@ async def add_expense(
         code=201,
         message="Expense created successfully", 
         data=new_expense
+    )
+
+
+@expenses_router.get("/summary", response_model=APIResponse[ExpenseSummaryResponse])
+async def get_expense_summary(
+    include_ai: bool=Query(False, description="Whether to generate AI financial tips"),
+    current_user: User=Depends(get_current_user),
+    db: AsyncSession=Depends(get_db)
+):
+    summary_data = await ExpenseService.get_summary(db, current_user.id)
+
+    if include_ai:
+        summary_data["ai_insight"] = await AIService.generate_insight(summary_data)
+
+    return APIResponse(
+        message="Summary retrieved.",
+        data=summary_data
     )
 
 

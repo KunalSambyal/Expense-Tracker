@@ -9,6 +9,9 @@ class Settings(BaseSettings):
 
     DATABASE_URL: str = "sqlite+aiosqlite:///./expensetracker.db"
 
+    OLLAMA_HOST: str = "http://localhost:11434"
+    OLLAMA_MODEL: str = "qwen2.5:3b"
+
     model_config = SettingsConfigDict(env_file=".env", case_sensitive=True, extra="ignore")
 
 

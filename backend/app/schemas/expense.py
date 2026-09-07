@@ -35,3 +35,19 @@ class ExpenseResponse(BaseModel):
     category_id: uuid.UUID
 
     model_config = {"from_attributes": True}
+
+
+class CategoryBreakdown(BaseModel):
+    category_name: str
+    total_amount: float
+    percentage: float
+
+class AIInsight(BaseModel):
+    summary: str
+    tips: list[str]
+
+class ExpenseSummaryResponse(BaseModel):
+    total_spending: float
+    current_month_spending: float
+    by_category: list[CategoryBreakdown]
+    ai_insight: Optional[AIInsight] = None
