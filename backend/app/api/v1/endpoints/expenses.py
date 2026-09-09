@@ -74,7 +74,7 @@ async def get_expenses(
         db=db,
         user_id=current_user.id,
         category_id=category_id,
-        min_amount=max_amount,
+        min_amount=min_amount,
         max_amount=max_amount,
         start_date=start_date,
         end_date=end_date,

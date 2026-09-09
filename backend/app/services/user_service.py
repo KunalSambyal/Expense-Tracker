@@ -8,6 +8,11 @@ from app.core.security import hash_password, verify_password_hash
 
 class UserService:
     @staticmethod
+    async def get_by_id(db: AsyncSession, user_id: uuid.UUID) -> User | None:
+        query = select(User).where(User.id == user_id)
+        return (await db.execute(query)).scalar_one_or_none() 
+
+    @staticmethod
     async def get_by_username(db: AsyncSession, username: str) -> User | None:
         query = select(User).where(User.username == username)
         result = (await db.execute(query)).scalar_one_or_none()

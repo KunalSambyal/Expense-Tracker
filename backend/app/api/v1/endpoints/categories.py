@@ -39,7 +39,7 @@ async def get_categories(db: AsyncSession=Depends(get_db), current_user: User=De
     )
 
 
-@category_router.delete("/{category_id}", response_model=APIResponse[CategoryResponse], status_code=status.HTTP_200_OK)
+@category_router.delete("/{category_id}", response_model=APIResponse, status_code=status.HTTP_200_OK)
 async def delete_category(category_id: UUID, db: AsyncSession=Depends(get_db), current_user: User=Depends(get_current_user)):
     category = await CategoryService.get_by_id(db, category_id, current_user.id)
 
@@ -53,5 +53,5 @@ async def delete_category(category_id: UUID, db: AsyncSession=Depends(get_db), c
     
     return APIResponse(
         message="Category deleted successfully",
-        data=category
+        data=None
     )
