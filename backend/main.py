@@ -13,6 +13,7 @@ from app.api.v1.endpoints.users import users_router
 from app.api.v1.endpoints.categories import category_router
 from app.api.v1.endpoints.expenses import expenses_router
 
+from app.core.exceptions import setup_exception_handlers
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -27,3 +28,5 @@ app.include_router(auth_router)
 app.include_router(users_router)
 app.include_router(category_router)
 app.include_router(expenses_router)
+
+setup_exception_handlers(app)
