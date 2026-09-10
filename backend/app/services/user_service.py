@@ -1,6 +1,8 @@
 import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
+from sqlalchemy.exc import IntegrityError
+from fastapi.exceptions import HTTPException
 
 from app.models.user import User
 from app.schemas.user import UserCreate
@@ -29,16 +31,23 @@ class UserService:
 
     @staticmethod
     async def create(db: AsyncSession, user_data: UserCreate) -> User:
-        new_user = User(
-            username=user_data.username,
-            email=user_data.email,
-            password_hash=hash_password(user_data.password.get_secret_value())
-        )
+        try:
+            new_user = User(
+                username=user_data.username,
+                email=user_data.email,
+                password_hash=hash_password(user_data.password.get_secret_value())
+            )
 
-        db.add(new_user)
-        await db.commit()
-        await db.refresh(new_user)
-        return new_user
+            db.add(new_user)
+            await db.commit()
+            await db.refresh(new_user)
+            return new_user
+        except IntegrityError:
+            await db.rollback()
+            raise HTTPException(
+                status_code=409,
+                detail="User with this username or email already exists."
+            )
 
     @staticmethod
     async def authenticate(db: AsyncSession, username: str, password: str) -> User | None:

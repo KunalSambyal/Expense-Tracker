@@ -1,6 +1,8 @@
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
+from sqlalchemy.exc import IntegrityError
+from fastapi.exceptions import HTTPException
 import datetime
 
 from app.models.category import Category
@@ -68,19 +70,33 @@ class ExpenseService:
 
     @staticmethod
     async def create(db: AsyncSession, expense_data: ExpenseCreate, user_id: UUID) -> Expense:
-        new_expense = Expense(**expense_data.model_dump(), user_id=user_id)
-        db.add(new_expense)
-        await db.commit()
-        await db.refresh(new_expense)
-        return new_expense
+        try:
+            new_expense = Expense(**expense_data.model_dump(), user_id=user_id)
+            db.add(new_expense)
+            await db.commit()
+            await db.refresh(new_expense)
+            return new_expense
+        except IntegrityError:
+            await db.rollback()
+            raise HTTPException(
+                status_code=400,
+                detail="Invalid category or user reference for this expense."
+            )
 
     @staticmethod
     async def update(db: AsyncSession, expense: Expense, update_data: dict) -> Expense:
-        for field, value in update_data.items():
-            setattr(expense, field, value)
-        await db.commit()
-        await db.refresh(expense)
-        return expense
+        try:
+            for field, value in update_data.items():
+                setattr(expense, field, value)
+            await db.commit()
+            await db.refresh(expense)
+            return expense
+        except IntegrityError:
+            await db.rollback()
+            raise HTTPException(
+                status_code=400,
+                detail="Failed to update expense: referenced category doed not exists."
+            )
 
     @staticmethod
     async def delete(db: AsyncSession, expense: Expense) -> None:

@@ -32,12 +32,29 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 
 async def integrity_exception_handler(request: Request, exc: IntegrityError) -> JSONResponse:
+    error_str = str(exc.orig).lower()
+    sqlstate = getattr(exc.orig, "sqlstate", None)
+
+    # Distinguish specific violations
+    if sqlstate == "23505" or "unique constraint" in error_str or "unique" in error_str:
+        status_code = status.HTTP_409_CONFLICT
+        message = "A record with the information already exists."
+    elif sqlstate == "23503" or "foreign key" in error_str:
+        status_code = status.HTTP_400_BAD_REQUEST
+        message = "Referenced resource does not exist or is currently in use."
+    elif sqlstate == "23502" or "not null" in error_str:
+        status_code = status.HTTP_400_BAD_REQUEST
+        message = "A required database field is missing."
+    else:
+        status_code = status.HTTP_400_BAD_REQUEST
+        message = "Database integrity constraint violated."
+
     return JSONResponse(
-            status_code=status.HTTP_409_CONFLICT,
+            status_code=status_code,
             content={
                 "success": False,
-                "code": 409,
-                "message": "Database conflict: duplicate record or invalid reference.",
+                "code": status_code,
+                "message": message,
                 "data": None,
             }
         )

@@ -1,6 +1,8 @@
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
+from sqlalchemy.exc import IntegrityError
+from fastapi.exceptions import HTTPException
 
 from app.models.category import Category
 from app.schemas.category import CategoryCreate
@@ -27,14 +29,21 @@ class CategoryService:
 
     @staticmethod
     async def create(db: AsyncSession, category_data: CategoryCreate, user_id: UUID) -> Category:
-        new_category = Category(
-            name=category_data.name,
-            user_id=user_id
-        )
-        db.add(new_category)
-        await db.commit()
-        await db.refresh(new_category)
-        return new_category
+        try:
+            new_category = Category(
+                name=category_data.name,
+                user_id=user_id
+            )
+            db.add(new_category)
+            await db.commit()
+            await db.refresh(new_category)
+            return new_category
+        except IntegrityError:
+            await db.rollback()
+            raise HTTPException(
+                status_code=409,
+                detail="Category with this name already exists."
+            )
 
     @staticmethod
     async def delete(db: AsyncSession, category: Category) -> None:
