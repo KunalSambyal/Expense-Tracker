@@ -113,7 +113,8 @@ ExpenseTracker/
     │   └── versions/
     └── tests/
         ├── conftest.py
-        └── test_auth.py
+        ├── test_auth.py
+        └── test_categories.py
 ```
 
 ---
