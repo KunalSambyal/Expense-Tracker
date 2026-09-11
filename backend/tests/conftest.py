@@ -63,3 +63,9 @@ async def auth_headers(client: AsyncClient) -> dict:
     token = res_data["access_token"]
 
     return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture(scope="function")
+async def test_category_id(client: AsyncClient, auth_headers: dict) -> str:
+    res = await client.post("/api/v1/categories", json={"name": "General"}, headers=auth_headers)
+    return res.json()["data"]["id"]
