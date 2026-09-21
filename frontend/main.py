@@ -212,3 +212,61 @@ else:
                             st.error(d_data.get("message", "Failed to delete expense."))
         else:
             st.error("Failed to load expenses.")
+
+
+    with tab_dashboard:
+        st.header("Financial Dashboard & Analytics")
+
+        summary_res, summary_status = api_client.get_summary(st.session_state["token"], include_ai=False)
+
+        if summary_status == 200:
+            summary = summary_res.get("data", {})
+            total_spent = summary.get("total_spending", 0.0)
+            month_spent = summary.get("current_month_spending", 0.0)
+            by_category = summary.get("by_category", [])
+
+            col_m1, col_m2, col_m3 = st.columns(3)
+            with col_m1:
+                st.metric("Total Spending", f"${total_spent:,.2f}")
+            with col_m2:
+                st.metric("This Month's Spending", f"${month_spent:,.2f}")
+            with col_m3:
+                st.metric("Active Categories", len(by_category))
+
+            st.divider()
+
+            st.subheader("Spending by Category")
+
+            if not by_category:
+                st.info("No expenses logged yet. Add some expenses to see visual analytics!")
+            else:
+                chart_data = {item["category_name"]: item["total_amount"] for item in by_category}
+                st.bar_chart(chart_data)
+
+            st.divider()
+
+            st.subheader("AI Financial Advisor")
+            st.caption("Powered by local Ollama LLM (llama3.2)")
+
+            if not by_category:
+                st.info("Log some expenses first so the AI has data to analyze.")
+            else:
+                if st.button("Generate AI Financial Insights"):
+                    with st.spinner("Analyzing your spending habits with Ollama..."):
+                        ai_res, ai_status = api_client.get_summary(st.session_state["token"], include_ai=True)
+
+                        if ai_status == 200:
+                            ai_data = ai_res.get("data", {}).get("ai_insight")
+                            if ai_data:
+                                st.success("Analysis Complete!")
+                                st.write(f"**Executive Summary:** {ai_data.get('summary')}")
+
+                                st.write("**Actionable Saving Tips:**")
+                                for tip in ai_data.get("tips", []):
+                                    st.write(f"- {tip}")
+                            else:
+                                st.warning("AI did not return any insights.")
+                        else:
+                            st.error("Failed to generate AI insights. Make sure your local Ollama instance is running!")
+        else:
+            st.error("Failed to load dashboard summary data.")
