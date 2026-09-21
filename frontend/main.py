@@ -105,3 +105,110 @@ else:
                                     st.error(del_data.get("message", "Failed to delete category."))
             else:
                 st.error(data.get("message", "Failed to load categories."))
+
+
+    with tab_expenses:
+        st.header("Expenses")
+
+        cat_data, cat_status = api_client.get_categories(st.session_state["token"])
+        categories = cat_data.get("data", []) if cat_status == 200 else []
+
+        if not categories:
+            st.warning("No categories available. Please create a category first.")
+        else:
+            category_map = {cat["name"]: cat["id"] for cat in categories}
+
+            with st.expander("Add New Expense"):
+                with st.form("add_expense_form", clear_on_submit=True):
+                    col_t, col_a = st.columns([2, 1])
+
+                    with col_t:
+                        title = st.text_input("Expense Title", placeholder="e.g. Groceries")
+
+                    with col_a:
+                        amount = st.number_input("Amount", min_value=0.01, step=1.00, format="%.2f")
+
+                    col_c, col_d = st.columns([1, 1])
+
+                    with col_c:
+                        selected_cat_name = st.selectbox("Category", options=list(category_map.keys()))
+
+                    with col_d:
+                        expense_date = st.date_input("Date")
+
+                    description = st.text_area("Description (Optional)", placeholder="Add extra notes here...")
+
+                    expense_submitted = st.form_submit_button("Save Expense")
+
+                    if expense_submitted:
+                        if not title.strip():
+                            st.warning("Expense title cannot be empty.")
+                        else:
+                            payload = {
+                                "title": title,
+                                "amount": amount,
+                                "category_id": category_map[selected_cat_name],
+                                "date": str(expense_date),
+                                "description": description.strip() if description.strip() else None
+                            }
+
+                            data, status = api_client.create_expense(st.session_state["token"], payload)
+                            if status == 201:
+                                st.success(f"Expense added successfully!")
+                                st.rerun()
+                            else:
+                                st.error(data.get("message", "Failed to add expense."))
+        st.divider()
+
+
+        st.subheader("Your Expenses")
+        col_f1, col_f2, col_f3 = st.columns([2, 1, 1])
+        with col_f1:
+            filter_cat_options = ["All"] + list(category_map.keys()) if categories else ["All"]
+            filter_cat = st.selectbox("Filter by Category", options=filter_cat_options)
+        with col_f2:
+            min_amt = st.number_input("Min Amount", min_value=0.0, step=10.0, value=0.0)
+        with col_f3:
+            sort_order = st.selectbox("Order by Date", ["Newest First (desc)", "Oldest First (asc)"])
+
+        params = {
+            "order": "desc" if "desc" in sort_order else "asc"
+        }
+        if filter_cat != "All":
+            params["category_id"] = category_map[filter_cat]
+        if min_amt > 0:
+            params["min_amount"] = min_amt
+
+        exp_data, exp_status = api_client.get_expenses(st.session_state["token"], params=params)
+
+        if exp_status == 200:
+            expenses = exp_data.get("data", [])
+            if not expenses:
+                st.info("No expenses found matching the criteria.")
+            else:
+                table_rows = []
+                for e in expenses:
+                    cat_name = next((c["name"] for c in categories if c["id"] == e.get("category_id")), "Unknown")
+                    table_rows.append({
+                        "Title": e.get("title"),
+                        "Amount": f"${e.get('amount'):,.2f}",
+                        "Category": cat_name,
+                        "Date": e.get("date"),
+                        "Description": e.get("description") or "-"
+                    })
+
+                st.table(table_rows)
+
+                with st.expander("Delete an Expense"):
+                    expense_options = {f"{e['title']} (${e['amount']}) - {e['date']}": e["id"] for e in expenses}
+                    selected_to_delete = st.selectbox("Select Expense to Delete", options=list(expense_options.keys()))
+                    if st.button("Confirm Delete Expense"):
+                        del_id = expense_options[selected_to_delete]
+                        d_data, d_status = api_client.delete_expense(st.session_state["token"], del_id)
+                        if d_status == 200:
+                            st.success("Expense deleted successfully!")
+                            st.rerun()
+                        else:
+                            st.error(d_data.get("message", "Failed to delete expense."))
+        else:
+            st.error("Failed to load expenses.")
