@@ -1,7 +1,38 @@
 import streamlit as st
 import api_client
+from datetime import date
 
 st.set_page_config(page_title="Expense Tracker", layout="wide")
+st.markdown(
+    """
+    <style>
+    /* Increase global font size and enhance readability */
+    html, body, [class*="css"] {
+        font-size: 17px;
+    }
+
+    /* Headings and labels */
+    h1, h2, h3 {
+        font-weight: 700;
+        letter-spacing: -0.02em;
+    }
+    label {
+        font-size: 1.05rem !important;
+        font-weight: 500 !important;
+    }
+
+    /* Blue accent and larger text for Streamlit Toasts */
+    [data-testid="stToast"] {
+        font-size: 1.1rem;
+        font-weight: 500;
+        border-left: 5px solid #2563EB;
+        border-radius: 8px;
+        background-color: #1C2029;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
 if "token" not in st.session_state:
     st.session_state["token"] = None
@@ -198,6 +229,61 @@ else:
                     })
 
                 st.table(table_rows)
+
+
+                st.divider()
+
+
+                with st.expander("Update an Expense"):
+                    expense_options = {f"{e['title']} (${e['amount']:.2f}) - {e['date']}": e for e in expenses}
+                    selected_label = st.selectbox("Select Expense to Update", options=list(expense_options.keys()))
+                    selected_expense = expense_options[selected_label]
+                    exp_id = selected_expense["id"]
+
+                    with st.form("update_expense_form", clear_on_submit=False):
+                        col_t, col_a = st.columns([2, 1])
+
+                        with col_t:
+                            title = st.text_input("Expense Title", placeholder="e.g. Gym", value=selected_expense.get("title", ""), key=f"u_title_{exp_id}")
+
+                        with col_a:
+                            amount = st.number_input("Amount", min_value=0.01, step=1.00, format="%.2f", value=float(selected_expense.get("amount", "0.01")), key=f"u_amt_{exp_id}")
+
+                        col_c, col_d = st.columns([1, 1])
+                        current_cat_name = next((c["name"] for c in categories if c["id"] == selected_expense.get("category_id")), list(category_map.keys())[0])
+                        cat_index = list(category_map.keys()).index(current_cat_name)
+
+                        with col_c:
+                            selected_cat_name = st.selectbox("Category", options=list(category_map.keys()), index=cat_index, key=f"u_cat_{exp_id}")
+
+                        with col_d:
+                            expense_date = st.date_input("Date", value=date.fromisoformat(selected_expense["date"]), key=f"u_date_{exp_id}")
+
+                        description = st.text_area("Description (Optional)", placeholder="Add extra notes here...", value=selected_expense.get("description") or "", key=f"uz_desc_{exp_id}")
+
+                        expense_submitted = st.form_submit_button("Update Expense")
+
+                        if expense_submitted:
+                            updated_payload = {
+                                "title": title,
+                                "amount": float(amount),
+                                "category_id": category_map[selected_cat_name],
+                                "date": expense_date.isoformat(),
+                                "description": description or None
+                            }
+                            response, status = api_client.update_expense(st.session_state["token"], exp_id, updated_payload)
+
+                            if status == 200:
+                                st.toast("Expense updated successfully!")
+                                st.rerun()
+                            else:
+                                st.error(response.get("message", "Expense update unsuccessful"))
+                            
+
+                st.divider()
+
+
+
 
                 with st.expander("Delete an Expense"):
                     expense_options = {f"{e['title']} (${e['amount']}) - {e['date']}": e["id"] for e in expenses}

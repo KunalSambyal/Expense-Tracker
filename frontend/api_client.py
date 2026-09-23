@@ -46,6 +46,14 @@ def create_expense(token: str, expense_data: dict):
     response = httpx.post(f"{API_BASE_URL}/expenses", json=expense_data, headers=_get_headers(token))
     return response.json(), response.status_code
 
+def update_expense(token: str, expense_id: str, expense_data: dict):
+    response = httpx.patch(
+        f"{API_BASE_URL}/expenses/{expense_id}",
+        json=expense_data,
+        headers=_get_headers(token)
+    )
+    return response.json(), response.status_code
+
 def delete_expense(token: str, expense_id: str):
     response = httpx.delete(f"{API_BASE_URL}/expenses/{expense_id}", headers=_get_headers(token))
     return response.json(), response.status_code
