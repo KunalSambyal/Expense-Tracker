@@ -1,0 +1,11 @@
+[theme]
+# Primary accent color for buttons, active tabs, inputs, and highlights
+primaryColor = "#2563EB"
+
+# Dark mode background palette for high contrast
+backgroundColor = "#0F1117"
+secondaryBackgroundColor = "#1C2029"
+textColor = "#F3F4F6"
+
+# Font family
+font = "sans serif"
